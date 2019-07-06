@@ -46,7 +46,6 @@ fn main() {
     }
     mut u := [f64(1.0);n]
     mut v := [f64(1.0);n]
-    //t := [f64(1.0);n]
 
     for i := 0; i< 10; i++ {
         v.a_times_transp(u)
