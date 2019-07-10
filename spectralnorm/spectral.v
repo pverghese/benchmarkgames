@@ -1,36 +1,92 @@
 module main
 import math
 import os
+import sync
+import time
 
+const (
+    nCPU = 1
+)
+
+struct chan {
+mut:
+    count int
+    mu sync.Mutex
+}
+
+fn (c mut chan) inc() {
+    c.count++
+}
+fn (c mut chan) get() int {
+    return c.count
+}
 
 fn evala(i, j int) int {
     return ((i+j)*(i+j+1)/2 + i + 1)
 }
 
-fn (v mut []f64) times(u []f64) {
-    for i := 0; i < v.len; i++ {
+fn times(ii int, n int, u []f64, v mut []f64, c mut chan) {
+    c.mu.lock()
+    for i := ii; i < n; i++ {
         mut a := f64(0)
         for j :=0; j< u.len; j++ {
             a += u[j] /f64(evala(i,j))
         }
         v[i] = a
     }
+    c.count++
+    //println('Done')
+    c.mu.unlock()
 }
 
-fn (v mut []f64) times_trans(u []f64) {
-    for i := 0; i< v.len; i++ {
+fn times_trans(ii int, n int, u []f64, v mut []f64, c mut chan) {
+    //println('Len of v: ${v.len}')
+    c.mu.lock()
+    //println('ii: ${ii}, n: ${n}')
+    for i := ii; i< n; i++ {
+        //println('i:${i}')
         mut a := f64(0)
         for j :=0; j< u.len; j++ {
+            //println('j:${j}')
             a += u[j] / f64(evala(j,i))
         }
         v[i] = a
     }
+    c.count++
+    //println('DoneT')
+    c.mu.unlock()
 }
 
-fn (v mut []f64) a_times_transp(u []f64) {
+fn wait(i int, c mut chan) {
+    for {
+        if c.count ==i {
+            break
+        }
+        time.sleep_ms(50)
+    }
+}
+
+fn a_times_transp(u []f64, v mut []f64) {
     mut x := [f64(0); u.len]
-    x.times(u)
-    v.times_trans(x)
+    mut c := chan{count:0}
+    for i := 0; i< nCPU; i++ {
+        //println('start: ${i * v.len/nCPU}')
+        //println('end: ${(i+1)*v.len/nCPU}')
+        go times(i * v.len/nCPU, (i+1)*v.len/nCPU, u, &x, &c)
+    }
+    wait(nCPU, mut c)
+    c.count=0
+   
+    //println('c.count : ${c.count} len of v ${v.len}')
+    for i := 0; i< nCPU; i++ {
+        //println('start: ${i * v.len/nCPU}')
+        //println('end: ${(i+1)*v.len/nCPU}')
+        go times_trans(i * v.len/nCPU, (i+1)*v.len/nCPU, x, v, &c)
+    }
+    wait(nCPU, mut c)
+    
+    //x.times(u)
+    //v.times_trans(x)
 } 
 
 fn main() {
@@ -48,8 +104,9 @@ fn main() {
     mut v := [f64(1.0);n]
 
     for i := 0; i< 10; i++ {
-        v.a_times_transp(u)
-        u.a_times_transp(v)
+        a_times_transp(u,mut v)
+        a_times_transp(v, mut u)
+        //println('v len: ${v.len} ulen: ${u.len}')
     }
 
     mut vbv := f64(0)
