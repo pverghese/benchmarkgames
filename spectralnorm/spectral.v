@@ -26,6 +26,7 @@ fn evala(i, j int) int {
 }
 
 fn times(ii int, n int, u []f64, v mut []f64, c mut chan) {
+    c.mu.lock()
     for i := ii; i < n; i++ {
         mut a := f64(0)
         for j :=0; j< u.len; j++ {
@@ -33,7 +34,6 @@ fn times(ii int, n int, u []f64, v mut []f64, c mut chan) {
         }
         v[i] = a
     }
-    c.mu.lock()
     c.count++
     //println('Done')
     c.mu.unlock()
@@ -42,6 +42,7 @@ fn times(ii int, n int, u []f64, v mut []f64, c mut chan) {
 fn times_trans(ii int, n int, u []f64, v mut []f64, c mut chan) {
     //println('Len of v: ${v.len}')
     //println('ii: ${ii}, n: ${n}')
+    c.mu.lock()
     for i := ii; i< n; i++ {
         //println('i:${i}')
         mut a := f64(0)
@@ -51,17 +52,16 @@ fn times_trans(ii int, n int, u []f64, v mut []f64, c mut chan) {
         }
         v[i] = a
     }
-    c.mu.lock()
     c.count++
     //println('DoneT')
     c.mu.unlock()
 }
 
-fn wait(i int, c mut chan) int {
+fn wait(i int, c mut chan) {
     for {
         c.mu.lock()
         if c.count >=i {
-            return 0
+            break
         }
         c.mu.unlock()
     }
@@ -75,7 +75,7 @@ fn a_times_transp(u []f64, v mut []f64) {
         //println('end: ${(i+1)*v.len/nCPU}')
         go times(i * v.len/nCPU, (i+1)*v.len/nCPU, u, &x, &c)
     }
-    mut a := wait(nCPU, mut c)
+    wait(nCPU, mut c)
     c.count=0
    
     //println('c.count : ${c.count} len of v ${v.len}')
@@ -84,11 +84,10 @@ fn a_times_transp(u []f64, v mut []f64) {
         //println('end: ${(i+1)*v.len/nCPU}')
         go times_trans(i * v.len/nCPU, (i+1)*v.len/nCPU, x, v, &c)
     }
-    a = wait(nCPU, mut c)
+    wait(nCPU, mut c)
     c.count=0 
     //x.times(u)
     //v.times_trans(x)
-    c.count=a
 } 
 
 fn main() {
