@@ -57,7 +57,7 @@ fn times_trans(ii int, n int, u []f64, v mut []f64, c mut chan) {
     c.mu.unlock()
 }
 
-fn wait(i int, c mut chan) {
+fn wait_h(i int, c mut chan) {
     for {
         c.mu.lock()
         if c.count >=i {
@@ -75,7 +75,7 @@ fn a_times_transp(u []f64, v mut []f64) {
         //println('end: ${(i+1)*v.len/nCPU}')
         go times(i * v.len/nCPU, (i+1)*v.len/nCPU, u, &x, &c)
     }
-    wait(nCPU, mut c)
+    wait_h(nCPU, mut c)
     c.count=0
    
     //println('c.count : ${c.count} len of v ${v.len}')
@@ -84,7 +84,7 @@ fn a_times_transp(u []f64, v mut []f64) {
         //println('end: ${(i+1)*v.len/nCPU}')
         go times_trans(i * v.len/nCPU, (i+1)*v.len/nCPU, x, v, &c)
     }
-    wait(nCPU, mut c)
+    wait_h(nCPU, mut c)
     c.count=0 
     //x.times(u)
     //v.times_trans(x)
